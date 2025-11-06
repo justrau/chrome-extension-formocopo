@@ -5,6 +5,7 @@ let selectedForm = null;
 
 // Listen for right-clicks to track which form is selected
 document.addEventListener('contextmenu', (event) => {
+  console.log('contextmenu', event, event.target, event.target.closest('form'));
   // Find the closest form to the clicked element
   const form = event.target.closest('form');
   if (form) {
@@ -150,6 +151,9 @@ function saveForm() {
     }
   });
 
+  // Print raw form data to console
+  console.log('Raw form data being saved:', formData);
+
   // Generate a suggested preset name
   const suggestedName = generatePresetName(selectedForm);
 
@@ -194,16 +198,19 @@ function fillForm(presetName) {
     const preset = presets[presetName];
     const formData = preset.formData;
 
+    // Print raw form data to console
+    console.log('Raw form data being pasted:', formData);
+
     // Try to fill any form on the page that has matching fields
     let fieldsFound = 0;
     let fieldsFilled = 0;
 
-    // Check if we're on the same page where the form was saved
-    if (preset.url !== window.location.href) {
-      if (!confirm(`This preset was saved on ${preset.url}. Do you still want to try to fill the current form?`)) {
-        return;
-      }
-    }
+    // // Check if we're on the same page where the form was saved
+    // if (preset.url !== window.location.href) {
+    //   if (!confirm(`This preset was saved on ${preset.url}. Do you still want to try to fill the current form?`)) {
+    //     return;
+    //   }
+    // }
 
     // Get all form elements on the page
     const inputs = document.querySelectorAll('input, select, textarea');
@@ -214,55 +221,51 @@ function fillForm(presetName) {
         return;
       }
 
-      // Check if the field already has a value
-      const hasExistingValue = () => {
-        if (input.type === 'checkbox' || input.type === 'radio') {
-          return input.checked;
-        } else if (input.tagName.toLowerCase() === 'select') {
-          // For select elements, check if a non-default option is selected
-          return input.selectedIndex > 0 && input.value && input.value.trim() !== '';
-        } else {
-          // For text inputs and textareas
-          return input.value && input.value.trim() !== '';
-        }
-      };
-
       const fieldId = getUniqueFieldId(input);
       const savedField = formData[fieldId];
 
       if (savedField) {
         fieldsFound++;
+        console.log(`Found field by ID match: ${input.name || input.id || 'unnamed'}, type: ${input.tagName.toLowerCase()}, saved value:`, savedField.value);
+        console.log(`Filling field by ID: ${input.name || input.id || 'unnamed'}, current value: "${input.value}", new value:`, savedField.value);
 
-        // Only fill the field if it doesn't already have a value
-        if (!hasExistingValue()) {
-          // Set the field value based on its type
-          if (input.type === 'checkbox' || input.type === 'radio') {
-            input.checked = savedField.value;
-            if (input.checked) {
-              fieldsFilled++;
-              // Dispatch change event
-              input.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-          } else if (input.tagName.toLowerCase() === 'select') {
-            if (input.multiple && Array.isArray(savedField.value)) {
-              // Reset all options first
-              Array.from(input.options).forEach(option => {
-                option.selected = savedField.value.includes(option.value);
-              });
-            } else {
-              input.value = savedField.value;
-            }
+        // Set the field value based on its type
+        if (input.type === 'checkbox' || input.type === 'radio') {
+          input.checked = savedField.value;
+          if (input.checked) {
             fieldsFilled++;
             // Dispatch change event
             input.dispatchEvent(new Event('change', { bubbles: true }));
-          } else {
-            // Regular inputs and textareas
-            input.value = savedField.value;
-            fieldsFilled++;
-            // Dispatch input and change events
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            input.dispatchEvent(new Event('change', { bubbles: true }));
           }
+        } else if (input.tagName.toLowerCase() === 'select') {
+          if (input.multiple && Array.isArray(savedField.value)) {
+            // Reset all options first
+            Array.from(input.options).forEach(option => {
+              option.selected = savedField.value.includes(option.value);
+            });
+          } else {
+            // Try to set the value, and verify it was set correctly
+            input.value = savedField.value;
+            // If the value didn't match exactly, try to find by option text or value
+            if (input.value !== savedField.value) {
+              // Try to find option by value
+              const option = Array.from(input.options).find(opt => opt.value === savedField.value);
+              if (option) {
+                option.selected = true;
+                input.value = savedField.value;
+              }
+            }
+          }
+          fieldsFilled++;
+          // Dispatch change event
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+        } else {
+          // Regular inputs and textareas
+          input.value = savedField.value;
+          fieldsFilled++;
+          // Dispatch input and change events
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.dispatchEvent(new Event('change', { bubbles: true }));
         }
       } else {
         // Try to match by name if present
@@ -271,41 +274,51 @@ function fillForm(presetName) {
           for (const [key, field] of Object.entries(formData)) {
             if (field.name === input.name) {
               fieldsFound++;
+              console.log(`Found field by name match: ${input.name}, element type: ${input.tagName.toLowerCase()}, field type: ${field.type}, saved value:`, field.value);
+              console.log(`Filling field: ${input.name}, current value: "${input.value}", new value:`, field.value);
 
-              // Only fill the field if it doesn't already have a value
-              if (!hasExistingValue()) {
-                // Handle field types
-                if (input.type === 'checkbox' || input.type === 'radio') {
-                  if (input.type === field.type) {
-                    input.checked = field.value;
-                    if (input.checked) {
-                      fieldsFilled++;
-                      input.dispatchEvent(new Event('change', { bubbles: true }));
-                    }
-                  }
-                } else if (input.tagName.toLowerCase() === 'select') {
-                  if (field.type.startsWith('select')) {
-                    if (input.multiple && Array.isArray(field.value)) {
-                      Array.from(input.options).forEach(option => {
-                        option.selected = field.value.includes(option.value);
-                      });
-                    } else {
-                      input.value = field.value;
-                    }
+              // Handle field types
+              if (input.type === 'checkbox' || input.type === 'radio') {
+                if (input.type === field.type) {
+                  input.checked = field.value;
+                  if (input.checked) {
                     fieldsFilled++;
                     input.dispatchEvent(new Event('change', { bubbles: true }));
                   }
-                } else {
-                  input.value = field.value;
+                }
+              } else if (input.tagName.toLowerCase() === 'select') {
+                if (field.type.startsWith('select') || field.type === 'select-one') {
+                  if (input.multiple && Array.isArray(field.value)) {
+                    Array.from(input.options).forEach(option => {
+                      option.selected = field.value.includes(option.value);
+                    });
+                  } else {
+                    // Try to set the value, and verify it was set correctly
+                    input.value = field.value;
+                    // If the value didn't match exactly, try to find by option value
+                    if (input.value !== field.value) {
+                      const option = Array.from(input.options).find(opt => opt.value === field.value);
+                      if (option) {
+                        option.selected = true;
+                        input.value = field.value;
+                      }
+                    }
+                  }
                   fieldsFilled++;
-                  input.dispatchEvent(new Event('input', { bubbles: true }));
                   input.dispatchEvent(new Event('change', { bubbles: true }));
                 }
+              } else {
+                input.value = field.value;
+                fieldsFilled++;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
               }
 
               break; // Break after the first match
             }
           }
+        } else {
+          console.log(`Field ${input.id || 'unnamed'} skipped - no name attribute and no ID match`);
         }
       }
     });
@@ -335,8 +348,16 @@ function getUniqueFieldId(element) {
     id += `label="${label.textContent.trim()}"`;
   }
 
-  // Add type info
-  id += `type="${element.type}"`;
+  // Add type info - normalize select elements
+  let typeToUse = element.type;
+  if (element.tagName.toLowerCase() === 'select') {
+    // For select elements, normalize the type since element.type can be undefined or inconsistent
+    typeToUse = element.multiple ? 'select-multiple' : 'select';
+  } else if (!typeToUse) {
+    // For other elements without a type, use tagName
+    typeToUse = element.tagName.toLowerCase();
+  }
+  id += `type="${typeToUse}"`;
 
   // If still no unique identifiers, use position in form
   if (!element.name && !element.id && !label) {

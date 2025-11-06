@@ -3,6 +3,14 @@
 // Track which form is selected
 let selectedForm = null;
 
+// Track cursor position for popover
+let lastCursorPosition = { x: 0, y: 0 };
+
+// Track mouse position
+document.addEventListener('mousemove', (event) => {
+  lastCursorPosition = { x: event.clientX, y: event.clientY };
+});
+
 // Listen for right-clicks to track which form is selected
 document.addEventListener('contextmenu', (event) => {
   console.log('contextmenu', event, event.target, event.target.closest('form'));
@@ -21,18 +29,24 @@ document.addEventListener('keydown', handleKeyboardShortcut);
 
 // Handler for keyboard shortcuts
 function handleKeyboardShortcut(event) {
-  // Ignore keydowns in input elements and textareas
+  // Ignore keydowns in input elements and textareas (except for popover shortcut)
   const tagName = document.activeElement.tagName.toLowerCase();
-  if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') {
-    return;
-  }
+  const inFormField = tagName === 'input' || tagName === 'textarea' || tagName === 'select';
 
   // Build the shortcut string based on pressed keys
   const shortcutParts = [];
-  if (event.altKey) shortcutParts.push('Alt');
-  if (event.ctrlKey) shortcutParts.push('Ctrl');
-  if (event.shiftKey) shortcutParts.push('Shift');
-  if (event.metaKey) shortcutParts.push('Meta');
+  if (event.altKey) {
+    shortcutParts.push('Alt');
+  }
+  if (event.ctrlKey) {
+    shortcutParts.push('Ctrl');
+  }
+  if (event.shiftKey) {
+    shortcutParts.push('Shift');
+  }
+  if (event.metaKey) {
+    shortcutParts.push('Meta');
+  }
 
   // Get the key itself
   let key = event.key;
@@ -75,11 +89,25 @@ function handleKeyboardShortcut(event) {
   // Construct the shortcut string
   const shortcutKey = shortcutParts.join('+');
 
-  // Look up if this shortcut is registered
-  chrome.storage.local.get("formShortcuts", (result) => {
-    const shortcuts = result.formShortcuts || {};
-    const presetName = shortcuts[shortcutKey];
+  // Check both popover shortcut and form fill shortcuts
+  chrome.storage.local.get(['popoverShortcut', 'formShortcuts'], (result) => {
+    const popoverShortcut = result.popoverShortcut || '';
+    const formShortcuts = result.formShortcuts || {};
 
+    // Check if this is the popover shortcut
+    if (popoverShortcut && shortcutKey === popoverShortcut) {
+      event.preventDefault();
+      showPresetPopover();
+      return;
+    }
+
+    // If we're in a form field, don't check form fill shortcuts
+    if (inFormField) {
+      return;
+    }
+
+    // Check if this is a form fill shortcut
+    const presetName = formShortcuts[shortcutKey];
     if (presetName) {
       // Prevent default browser behavior for this shortcut
       event.preventDefault();
@@ -473,4 +501,160 @@ function generatePresetName(form) {
   // Fallback to window title
   const title = document.title.trim();
   return title || `Preset ${new Date().toLocaleString()}`;
+}
+
+// Show preset popover at cursor position
+function showPresetPopover() {
+  // Remove any existing popover
+  removePresetPopover();
+
+  // Get all saved presets
+  chrome.storage.local.get('formPresets', (result) => {
+    const presets = result.formPresets || {};
+    const presetNames = Object.keys(presets);
+
+    if (presetNames.length === 0) {
+      // Show a message if no presets
+      showTemporaryMessage('No saved presets', lastCursorPosition.x, lastCursorPosition.y);
+      return;
+    }
+
+    // Create the popover
+    const popover = document.createElement('div');
+    popover.id = 'formocopo-preset-popover';
+    popover.style.cssText = `
+      position: fixed;
+      z-index: 999999;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      padding: 8px 0;
+      min-width: 200px;
+      max-width: 300px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+    `;
+
+    // Sort presets by savedAt date (newest first)
+    const sortedPresets = Object.entries(presets)
+      .sort(([, a], [, b]) => new Date(b.savedAt) - new Date(a.savedAt));
+
+    // Create list items for each preset
+    sortedPresets.forEach(([presetName, preset], index) => {
+      const item = document.createElement('div');
+      item.className = 'formocopo-preset-item';
+      const isLast = index === sortedPresets.length - 1;
+      item.style.cssText = `
+        padding: 10px 12px;
+        cursor: pointer;
+        ${!isLast ? 'border-bottom: 1px solid #f0f0f0;' : ''}
+        transition: background-color 0.15s;
+      `;
+
+      // Format date
+      const date = new Date(preset.savedAt);
+      const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+
+      item.innerHTML = `
+        <div style="font-weight: 500; color: #333; margin-bottom: 3px;">${presetName}</div>
+        <div style="font-size: 11px; color: #999;">${formattedDate}</div>
+      `;
+
+      // Hover effects
+      item.addEventListener('mouseenter', () => {
+        item.style.backgroundColor = '#f5f5f5';
+      });
+      item.addEventListener('mouseleave', () => {
+        item.style.backgroundColor = 'transparent';
+      });
+
+      // Click handler
+      item.addEventListener('click', () => {
+        fillForm(presetName);
+        removePresetPopover();
+      });
+
+      popover.appendChild(item);
+    });
+
+    // Position the popover near the cursor
+    document.body.appendChild(popover);
+
+    // Calculate position to keep popover on screen
+    const popoverRect = popover.getBoundingClientRect();
+    let left = lastCursorPosition.x;
+    let top = lastCursorPosition.y + 10; // 10px below cursor
+
+    // Adjust if popover would go off right edge
+    if (left + popoverRect.width > window.innerWidth) {
+      left = window.innerWidth - popoverRect.width - 10;
+    }
+
+    // Adjust if popover would go off bottom edge
+    if (top + popoverRect.height > window.innerHeight) {
+      top = lastCursorPosition.y - popoverRect.height - 10; // Show above cursor
+    }
+
+    popover.style.left = `${left}px`;
+    popover.style.top = `${top}px`;
+
+    // Close popover when clicking outside
+    setTimeout(() => {
+      document.addEventListener('click', handlePopoverOutsideClick);
+      document.addEventListener('keydown', handlePopoverEscape);
+    }, 0);
+  });
+}
+
+// Remove preset popover
+function removePresetPopover() {
+  const existingPopover = document.getElementById('formocopo-preset-popover');
+  if (existingPopover) {
+    existingPopover.remove();
+    document.removeEventListener('click', handlePopoverOutsideClick);
+    document.removeEventListener('keydown', handlePopoverEscape);
+  }
+}
+
+// Handle clicks outside popover
+function handlePopoverOutsideClick(event) {
+  const popover = document.getElementById('formocopo-preset-popover');
+  if (popover && !popover.contains(event.target)) {
+    removePresetPopover();
+  }
+}
+
+// Handle escape key to close popover
+function handlePopoverEscape(event) {
+  if (event.key === 'Escape') {
+    removePresetPopover();
+  }
+}
+
+// Show temporary message
+function showTemporaryMessage(message, x, y) {
+  const messageElement = document.createElement('div');
+  messageElement.style.cssText = `
+    position: fixed;
+    z-index: 999999;
+    background: #333;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 6px;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    left: ${x}px;
+    top: ${y + 10}px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  `;
+  messageElement.textContent = message;
+  document.body.appendChild(messageElement);
+
+  // Remove after 2 seconds
+  setTimeout(() => {
+    messageElement.remove();
+  }, 2000);
 }

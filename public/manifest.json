@@ -16,6 +16,7 @@
     "default_title": "Formocopo",
     "default_popup": "popup.html"
   },
+  "options_page": "settings.html",
   "permissions": [
     "storage",
     "activeTab",

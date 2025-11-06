@@ -261,24 +261,31 @@ function fillForm(presetName) {
 
           // Set the field value based on its type
           if (input.type === 'checkbox' || input.type === 'radio') {
-            // For radio buttons and checkboxes, try to click the label if available
-            if (savedField.value && input.id) {
-              const label = document.querySelector(`label[for="${input.id}"]`);
-              if (label) {
-                label.click();
-                fieldsFilledThisPass++;
-                filledFields.add(fieldId);
-              } else {
-                input.checked = savedField.value;
-                if (input.checked) {
+            // Only update if current state doesn't match desired state
+            if (input.checked !== savedField.value) {
+              // For radio buttons and checkboxes, try to click the label if available
+              if (savedField.value && input.id) {
+                const label = document.querySelector(`label[for="${input.id}"]`);
+                if (label) {
+                  label.click();
+                  fieldsFilledThisPass++;
+                  filledFields.add(fieldId);
+                } else {
+                  input.checked = savedField.value;
                   fieldsFilledThisPass++;
                   filledFields.add(fieldId);
                   input.dispatchEvent(new Event('change', { bubbles: true }));
                 }
+              } else {
+                // For unchecking, just set checked to false
+                input.checked = false;
+                filledFields.add(fieldId);
+                if (savedField.value) {
+                  fieldsFilledThisPass++;
+                }
               }
-            } else if (!savedField.value) {
-              // For unchecking, just set checked to false
-              input.checked = false;
+            } else {
+              // Already in correct state, just mark as filled
               filledFields.add(fieldId);
             }
           } else if (input.tagName.toLowerCase() === 'select') {
@@ -325,24 +332,31 @@ function fillForm(presetName) {
                 // Handle field types
                 if (input.type === 'checkbox' || input.type === 'radio') {
                   if (input.type === field.type) {
-                    // Try to click the label if available
-                    if (field.value && input.id) {
-                      const label = document.querySelector(`label[for="${input.id}"]`);
-                      if (label) {
-                        label.click();
-                        fieldsFilledThisPass++;
-                        filledFields.add(fieldId);
-                      } else {
-                        input.checked = field.value;
-                        if (input.checked) {
+                    // Only update if current state doesn't match desired state
+                    if (input.checked !== field.value) {
+                      // Try to click the label if available
+                      if (field.value && input.id) {
+                        const label = document.querySelector(`label[for="${input.id}"]`);
+                        if (label) {
+                          label.click();
+                          fieldsFilledThisPass++;
+                          filledFields.add(fieldId);
+                        } else {
+                          input.checked = field.value;
                           fieldsFilledThisPass++;
                           filledFields.add(fieldId);
                           input.dispatchEvent(new Event('change', { bubbles: true }));
                         }
+                      } else {
+                        // For unchecking, just set checked to false
+                        input.checked = false;
+                        filledFields.add(fieldId);
+                        if (field.value) {
+                          fieldsFilledThisPass++;
+                        }
                       }
-                    } else if (!field.value) {
-                      // For unchecking, just set checked to false
-                      input.checked = false;
+                    } else {
+                      // Already in correct state, just mark as filled
                       filledFields.add(fieldId);
                     }
                   }

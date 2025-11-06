@@ -645,11 +645,21 @@ function showEditView(presetName) {
     document.getElementById('editPresetView').style.display = 'block';
 
     // Set title
-    document.getElementById('editPresetTitle').textContent = `Edit: ${presetName}`;
+    document.getElementById('editPresetTitle').textContent = 'Edit Preset';
 
     // Populate fields
     const editFieldsList = document.getElementById('editFieldsList');
     editFieldsList.innerHTML = '';
+
+    // Add preset name field at the top
+    const nameField = document.createElement('div');
+    nameField.className = 'edit-field-item';
+    nameField.style.cssText = 'background: #f9f9f9; border: 2px solid #ddd;';
+    nameField.innerHTML = `
+      <div class="edit-field-label">Preset Name</div>
+      <input type="text" id="editPresetName" class="edit-field-input" value="${presetName}" style="font-weight: 500;">
+    `;
+    editFieldsList.appendChild(nameField);
 
     const formData = preset.formData;
 
@@ -693,10 +703,13 @@ function showEditView(presetName) {
     document.getElementById('backButton').onclick = hideEditView;
     document.getElementById('cancelEditButton').onclick = hideEditView;
 
-    // Setup save button
+    // Setup save button - store original name for reference
     document.getElementById('saveEditButton').onclick = () => {
       savePresetEdits(presetName);
     };
+
+    // Store original preset name as data attribute for later use
+    document.getElementById('editPresetView').dataset.originalName = presetName;
   });
 }
 
@@ -707,14 +720,30 @@ function hideEditView() {
 }
 
 // Save edits to a preset
-function savePresetEdits(presetName) {
-  chrome.storage.local.get("formPresets", (result) => {
+function savePresetEdits(originalPresetName) {
+  // Get the new preset name
+  const newPresetName = document.getElementById('editPresetName').value.trim();
+
+  if (!newPresetName) {
+    alert("Preset name cannot be empty");
+    return;
+  }
+
+  chrome.storage.local.get(["formPresets", "formShortcuts"], (result) => {
     const presets = result.formPresets || {};
-    const preset = presets[presetName];
+    const shortcuts = result.formShortcuts || {};
+    const preset = presets[originalPresetName];
 
     if (!preset) {
       alert("Preset not found");
       return;
+    }
+
+    // Check if renaming to a different name that already exists
+    if (newPresetName !== originalPresetName && presets[newPresetName]) {
+      if (!confirm(`A preset named "${newPresetName}" already exists. Do you want to overwrite it?`)) {
+        return;
+      }
     }
 
     // Collect updated values from the edit form
@@ -723,6 +752,10 @@ function savePresetEdits(presetName) {
 
     fieldItems.forEach(fieldItem => {
       const fieldId = fieldItem.dataset.fieldId;
+      if (!fieldId) {
+        return; // Skip the preset name field
+      }
+
       const fieldData = preset.formData[fieldId];
 
       if (fieldData.type === 'checkbox' || fieldData.type === 'radio') {
@@ -738,8 +771,24 @@ function savePresetEdits(presetName) {
       }
     });
 
+    // If name changed, handle the rename
+    if (newPresetName !== originalPresetName) {
+      // Delete old preset
+      delete presets[originalPresetName];
+
+      // Update any shortcuts that point to the old name
+      Object.keys(shortcuts).forEach(key => {
+        if (shortcuts[key] === originalPresetName) {
+          shortcuts[key] = newPresetName;
+        }
+      });
+    }
+
+    // Save preset with new name
+    presets[newPresetName] = preset;
+
     // Save back to storage
-    chrome.storage.local.set({ formPresets: presets }, () => {
+    chrome.storage.local.set({ formPresets: presets, formShortcuts: shortcuts }, () => {
       // Update context menus
       chrome.runtime.sendMessage({ action: "presetSaved" });
 

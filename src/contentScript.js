@@ -231,11 +231,22 @@ function fillForm(presetName) {
 
         // Set the field value based on its type
         if (input.type === 'checkbox' || input.type === 'radio') {
-          input.checked = savedField.value;
-          if (input.checked) {
-            fieldsFilled++;
-            // Dispatch change event
-            input.dispatchEvent(new Event('change', { bubbles: true }));
+          // For radio buttons and checkboxes, try to click the label if available
+          if (savedField.value && input.id) {
+            const label = document.querySelector(`label[for="${input.id}"]`);
+            if (label) {
+              label.click();
+              fieldsFilled++;
+            } else {
+              input.checked = savedField.value;
+              if (input.checked) {
+                fieldsFilled++;
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+              }
+            }
+          } else if (!savedField.value) {
+            // For unchecking, just set checked to false
+            input.checked = false;
           }
         } else if (input.tagName.toLowerCase() === 'select') {
           if (input.multiple && Array.isArray(savedField.value)) {
@@ -280,10 +291,22 @@ function fillForm(presetName) {
               // Handle field types
               if (input.type === 'checkbox' || input.type === 'radio') {
                 if (input.type === field.type) {
-                  input.checked = field.value;
-                  if (input.checked) {
-                    fieldsFilled++;
-                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                  // Try to click the label if available
+                  if (field.value && input.id) {
+                    const label = document.querySelector(`label[for="${input.id}"]`);
+                    if (label) {
+                      label.click();
+                      fieldsFilled++;
+                    } else {
+                      input.checked = field.value;
+                      if (input.checked) {
+                        fieldsFilled++;
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                      }
+                    }
+                  } else if (!field.value) {
+                    // For unchecking, just set checked to false
+                    input.checked = false;
                   }
                 }
               } else if (input.tagName.toLowerCase() === 'select') {
@@ -340,6 +363,11 @@ function getUniqueFieldId(element) {
   // Use the id if available
   if (element.id) {
     id += `id="${element.id}"`;
+  }
+
+  // For radio buttons, include the value to differentiate them
+  if (element.type === 'radio' && element.value) {
+    id += `value="${element.value}"`;
   }
 
   // Use the label if available

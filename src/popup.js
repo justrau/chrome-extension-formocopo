@@ -88,6 +88,7 @@ function loadPresets() {
         </div>
         <div class="action-buttons">
           <button class="fill" data-preset="${presetName}">Fill</button>
+          <button class="edit" data-preset="${presetName}">Edit</button>
           <button class="delete" data-preset="${presetName}">Delete</button>
         </div>
       `;
@@ -101,7 +102,7 @@ function loadPresets() {
   });
 }
 
-// Add event listeners to fill and delete buttons
+// Add event listeners to fill, edit, and delete buttons
 function addButtonEventListeners() {
   // Fill button event listeners
   document.querySelectorAll('button.fill').forEach(button => {
@@ -120,6 +121,14 @@ function addButtonEventListeners() {
         // Close the popup
         window.close();
       }
+    });
+  });
+
+  // Edit button event listeners
+  document.querySelectorAll('button.edit').forEach(button => {
+    button.addEventListener('click', () => {
+      const presetName = button.getAttribute('data-preset');
+      showEditView(presetName);
     });
   });
 
@@ -616,6 +625,129 @@ function removeShortcut(presetName) {
     // Save to storage
     chrome.storage.local.set({ formShortcuts: shortcuts }, () => {
       // No need to reload since we manually updated the UI
+    });
+  });
+}
+
+// Show edit view for a preset
+function showEditView(presetName) {
+  chrome.storage.local.get("formPresets", (result) => {
+    const presets = result.formPresets || {};
+    const preset = presets[presetName];
+
+    if (!preset) {
+      alert("Preset not found");
+      return;
+    }
+
+    // Hide list view, show edit view
+    document.getElementById('presetListView').style.display = 'none';
+    document.getElementById('editPresetView').style.display = 'block';
+
+    // Set title
+    document.getElementById('editPresetTitle').textContent = `Edit: ${presetName}`;
+
+    // Populate fields
+    const editFieldsList = document.getElementById('editFieldsList');
+    editFieldsList.innerHTML = '';
+
+    const formData = preset.formData;
+
+    // Create edit fields for each form field
+    Object.entries(formData).forEach(([fieldId, fieldData]) => {
+      const fieldItem = document.createElement('div');
+      fieldItem.className = 'edit-field-item';
+      fieldItem.dataset.fieldId = fieldId;
+
+      // Extract a readable label from the field name
+      let label = fieldData.name || 'Unnamed field';
+
+      // Create the field HTML based on type
+      let inputHtml = '';
+      if (fieldData.type === 'checkbox' || fieldData.type === 'radio') {
+        const checked = fieldData.value ? 'checked' : '';
+        inputHtml = `
+          <label>
+            <input type="checkbox" class="edit-field-checkbox" ${checked} data-field-id="${fieldId}">
+            ${fieldData.type === 'radio' ? 'Selected' : 'Checked'}
+          </label>
+        `;
+      } else if (fieldData.type === 'textarea') {
+        inputHtml = `<textarea class="edit-field-input" data-field-id="${fieldId}" rows="3">${fieldData.value || ''}</textarea>`;
+      } else if (fieldData.type === 'select' || fieldData.type === 'select-multiple') {
+        inputHtml = `<input type="text" class="edit-field-input" data-field-id="${fieldId}" value="${fieldData.value || ''}">`;
+      } else {
+        inputHtml = `<input type="text" class="edit-field-input" data-field-id="${fieldId}" value="${fieldData.value || ''}">`;
+      }
+
+      fieldItem.innerHTML = `
+        <div class="edit-field-label">${label}</div>
+        <div class="edit-field-meta">Type: ${fieldData.type}</div>
+        ${inputHtml}
+      `;
+
+      editFieldsList.appendChild(fieldItem);
+    });
+
+    // Setup back button
+    document.getElementById('backButton').onclick = hideEditView;
+    document.getElementById('cancelEditButton').onclick = hideEditView;
+
+    // Setup save button
+    document.getElementById('saveEditButton').onclick = () => {
+      savePresetEdits(presetName);
+    };
+  });
+}
+
+// Hide edit view and return to list view
+function hideEditView() {
+  document.getElementById('editPresetView').style.display = 'none';
+  document.getElementById('presetListView').style.display = 'block';
+}
+
+// Save edits to a preset
+function savePresetEdits(presetName) {
+  chrome.storage.local.get("formPresets", (result) => {
+    const presets = result.formPresets || {};
+    const preset = presets[presetName];
+
+    if (!preset) {
+      alert("Preset not found");
+      return;
+    }
+
+    // Collect updated values from the edit form
+    const editFieldsList = document.getElementById('editFieldsList');
+    const fieldItems = editFieldsList.querySelectorAll('.edit-field-item');
+
+    fieldItems.forEach(fieldItem => {
+      const fieldId = fieldItem.dataset.fieldId;
+      const fieldData = preset.formData[fieldId];
+
+      if (fieldData.type === 'checkbox' || fieldData.type === 'radio') {
+        const checkbox = fieldItem.querySelector('.edit-field-checkbox');
+        if (checkbox) {
+          fieldData.value = checkbox.checked;
+        }
+      } else {
+        const input = fieldItem.querySelector('.edit-field-input');
+        if (input) {
+          fieldData.value = input.value;
+        }
+      }
+    });
+
+    // Save back to storage
+    chrome.storage.local.set({ formPresets: presets }, () => {
+      // Update context menus
+      chrome.runtime.sendMessage({ action: "presetSaved" });
+
+      // Go back to list view
+      hideEditView();
+
+      // Reload the list to show updated data
+      loadPresets();
     });
   });
 }

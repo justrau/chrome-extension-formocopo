@@ -1,177 +1,186 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title>Formocopo</title>
-  <style>
-    body {
-      width: 320px;
-      padding: 15px;
-      font-family: Arial, sans-serif;
-    }
-    h1 {
-      font-size: 18px;
-      margin-top: 0;
-      color: #4285f4;
-    }
-    .preset-list {
-      max-height: 300px;
-      overflow-y: auto;
-    }
-    .preset-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 0;
-      border-bottom: 1px solid #eee;
-    }
-    .preset-info {
-      flex-grow: 1;
-      display: flex;
-      flex-direction: column;
-    }
-    .preset-name {
-      max-width: 160px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .preset-date {
-      font-size: 10px;
-      color: #666;
-    }
-    .shortcut-key {
-      display: inline-block;
-      padding: 2px 4px;
-      background-color: #f5f5f5;
-      border: 1px solid #ddd;
-      border-radius: 3px;
-      font-family: monospace;
-      font-size: 10px;
-      margin-top: 2px;
-      cursor: pointer;
-    }
-    .shortcut-key.empty {
-      color: #999;
-      border-style: dashed;
-      font-style: italic;
-    }
-    .shortcut-input {
-      padding: 2px 4px;
-      border: 1px solid #ddd;
-      border-radius: 3px;
-      font-family: monospace;
-      font-size: 10px;
-      width: 80px;
-      margin-top: 2px;
-    }
-    .action-buttons {
-      display: flex;
-      gap: 5px;
-    }
-    button {
-      background: #4285f4;
-      color: white;
-      border: none;
-      padding: 5px 8px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 11px;
-    }
-    button:hover {
-      background: #2b6abc;
-    }
-    button.delete {
-      background: #f44336;
-    }
-    button.delete:hover {
-      background: #d32f2f;
-    }
-    .no-presets {
-      padding: 20px 0;
-      text-align: center;
-      color: #666;
-    }
-    .instructions {
-      font-size: 12px;
-      margin-top: 15px;
-      padding-top: 10px;
-      border-top: 1px solid #eee;
-      color: #666;
-    }
-    .shortcut-hint {
-      font-size: 11px;
-      color: #666;
-      margin-top: 5px;
-    }
-    .edit-fields-list {
-      max-height: 350px;
-      overflow-y: auto;
-    }
-    .edit-field-item {
-      padding: 10px 0;
-      border-bottom: 1px solid #eee;
-    }
-    .edit-field-label {
-      font-size: 11px;
-      font-weight: bold;
-      color: #333;
-      margin-bottom: 5px;
-    }
-    .edit-field-meta {
-      font-size: 10px;
-      color: #666;
-      margin-bottom: 3px;
-    }
-    .edit-field-input {
-      width: 100%;
-      padding: 5px;
-      border: 1px solid #ddd;
-      border-radius: 3px;
-      font-size: 12px;
-      box-sizing: border-box;
-    }
-    .edit-field-checkbox {
-      width: auto;
-      margin-right: 5px;
-    }
-    button.edit {
-      background: #ff9800;
-    }
-    button.edit:hover {
-      background: #f57c00;
-    }
-  </style>
-</head>
-<body>
-  <h1>Formocopo</h1>
+  <head>
+    <title>Formocopo</title>
+    <style>
+      body {
+        width: 320px;
+        padding: 15px;
+        font-family: Arial, sans-serif;
+      }
+      h1 {
+        font-size: 18px;
+        margin-top: 0;
+        color: #4285f4;
+      }
+      .preset-list {
+        max-height: 300px;
+        overflow-y: auto;
+      }
+      .preset-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #eee;
+      }
+      .preset-info {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+      }
+      .preset-name {
+        max-width: 160px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .preset-date {
+        font-size: 10px;
+        color: #666;
+      }
+      .shortcut-key {
+        display: inline-block;
+        padding: 2px 4px;
+        background-color: #f5f5f5;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        font-family: monospace;
+        font-size: 10px;
+        margin-top: 2px;
+        cursor: pointer;
+      }
+      .shortcut-key.empty {
+        color: #999;
+        border-style: dashed;
+        font-style: italic;
+      }
+      .shortcut-input {
+        padding: 2px 4px;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        font-family: monospace;
+        font-size: 10px;
+        width: 80px;
+        margin-top: 2px;
+      }
+      .action-buttons {
+        display: flex;
+        gap: 5px;
+      }
+      button {
+        background: #4285f4;
+        color: white;
+        border: none;
+        padding: 5px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 11px;
+      }
+      button:hover {
+        background: #2b6abc;
+      }
+      button.delete {
+        background: #f44336;
+      }
+      button.delete:hover {
+        background: #d32f2f;
+      }
+      .no-presets {
+        padding: 20px 0;
+        text-align: center;
+        color: #666;
+      }
+      .instructions {
+        font-size: 12px;
+        margin-top: 15px;
+        padding-top: 10px;
+        border-top: 1px solid #eee;
+        color: #666;
+      }
+      .shortcut-hint {
+        font-size: 11px;
+        color: #666;
+        margin-top: 5px;
+      }
+      .edit-fields-list {
+        max-height: 350px;
+        overflow-y: auto;
+      }
+      .edit-field-item {
+        padding: 10px 0;
+        border-bottom: 1px solid #eee;
+      }
+      .edit-field-label {
+        font-size: 11px;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 5px;
+      }
+      .edit-field-meta {
+        font-size: 10px;
+        color: #666;
+        margin-bottom: 3px;
+      }
+      .edit-field-input {
+        width: 100%;
+        padding: 5px;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        font-size: 12px;
+        box-sizing: border-box;
+      }
+      .edit-field-checkbox {
+        width: auto;
+        margin-right: 5px;
+      }
+      button.edit {
+        background: #ff9800;
+      }
+      button.edit:hover {
+        background: #f57c00;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Formocopo</h1>
 
-  <div id="presetListView">
-    <div class="preset-list" id="presetList">
-      <!-- Presets will be loaded here -->
+    <div id="presetListView">
+      <div class="preset-list" id="presetList">
+        <!-- Presets will be loaded here -->
+      </div>
+
+      <div class="instructions">
+        <p><strong>How to use:</strong></p>
+        <p>1. Right-click on any form field and select "Save form"</p>
+        <p>
+          2. To fill a form, right-click and select a saved preset or use a
+          keyboard shortcut
+        </p>
+        <p>
+          3. Click on "Set shortcut" to assign a keyboard shortcut to a preset
+        </p>
+      </div>
     </div>
 
-    <div class="instructions">
-      <p><strong>How to use:</strong></p>
-      <p>1. Right-click on any form field and select "Save form"</p>
-      <p>2. To fill a form, right-click and select a saved preset or use a keyboard shortcut</p>
-      <p>3. Click on "Set shortcut" to assign a keyboard shortcut to a preset</p>
+    <div id="editPresetView" style="display: none">
+      <div style="display: flex; align-items: center; margin-bottom: 15px">
+        <button id="backButton" style="margin-right: 10px">← Back</button>
+        <h2 id="editPresetTitle" style="margin: 0; font-size: 16px">
+          Edit Preset
+        </h2>
+      </div>
+      <div id="editFieldsList" class="edit-fields-list">
+        <!-- Edit fields will be loaded here -->
+      </div>
+      <div style="margin-top: 15px; display: flex; gap: 10px">
+        <button id="saveEditButton" style="flex: 1">Save Changes</button>
+        <button id="cancelEditButton" style="flex: 1; background: #999">
+          Cancel
+        </button>
+      </div>
     </div>
-  </div>
 
-  <div id="editPresetView" style="display: none;">
-    <div style="display: flex; align-items: center; margin-bottom: 15px;">
-      <button id="backButton" style="margin-right: 10px;">← Back</button>
-      <h2 id="editPresetTitle" style="margin: 0; font-size: 16px;">Edit Preset</h2>
-    </div>
-    <div id="editFieldsList" class="edit-fields-list">
-      <!-- Edit fields will be loaded here -->
-    </div>
-    <div style="margin-top: 15px; display: flex; gap: 10px;">
-      <button id="saveEditButton" style="flex: 1;">Save Changes</button>
-      <button id="cancelEditButton" style="flex: 1; background: #999;">Cancel</button>
-    </div>
-  </div>
-
-  <script src="popup.js"></script>
-</body>
+    <script src="popup.js"></script>
+  </body>
 </html>

@@ -48,8 +48,12 @@ function handleShortcutKeydown(event) {
   event.preventDefault();
 
   // Skip if it's just a modifier key by itself
-  if (event.key === 'Control' || event.key === 'Alt' ||
-      event.key === 'Shift' || event.key === 'Meta') {
+  if (
+    event.key === 'Control' ||
+    event.key === 'Alt' ||
+    event.key === 'Shift' ||
+    event.key === 'Meta'
+  ) {
     return;
   }
 
@@ -79,19 +83,19 @@ function handleShortcutKeydown(event) {
   // Map special keys to their common names
   const keyMap = {
     ' ': 'Space',
-    'ArrowUp': 'ArrowUp',
-    'ArrowDown': 'ArrowDown',
-    'ArrowLeft': 'ArrowLeft',
-    'ArrowRight': 'ArrowRight',
-    'Enter': 'Enter',
-    'Tab': 'Tab',
-    'Escape': 'Esc',
-    'Delete': 'Delete',
-    'Backspace': 'Backspace',
-    'Home': 'Home',
-    'End': 'End',
-    'PageUp': 'PageUp',
-    'PageDown': 'PageDown'
+    ArrowUp: 'ArrowUp',
+    ArrowDown: 'ArrowDown',
+    ArrowLeft: 'ArrowLeft',
+    ArrowRight: 'ArrowRight',
+    Enter: 'Enter',
+    Tab: 'Tab',
+    Escape: 'Esc',
+    Delete: 'Delete',
+    Backspace: 'Backspace',
+    Home: 'Home',
+    End: 'End',
+    PageUp: 'PageUp',
+    PageDown: 'PageDown',
   };
 
   // For F1-F12 keys
@@ -155,4 +159,3 @@ function showStatus(message, type) {
     statusElement.className = 'status-message';
   }, 3000);
 }
-

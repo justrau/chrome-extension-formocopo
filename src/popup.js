@@ -12,11 +12,15 @@ document.addEventListener('DOMContentLoaded', () => {
 function setupTabs() {
   const tabs = document.querySelectorAll('.tab');
 
-  tabs.forEach(tab => {
+  tabs.forEach((tab) => {
     tab.addEventListener('click', () => {
       // Remove active class from all tabs and contents
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document
+        .querySelectorAll('.tab')
+        .forEach((t) => t.classList.remove('active'));
+      document
+        .querySelectorAll('.tab-content')
+        .forEach((c) => c.classList.remove('active'));
 
       // Add active class to clicked tab
       tab.classList.add('active');
@@ -36,7 +40,7 @@ function loadPresets() {
   presetListElement.innerHTML = '';
 
   // Get all saved presets and shortcuts
-  chrome.storage.local.get(["formPresets", "formShortcuts"], (result) => {
+  chrome.storage.local.get(['formPresets', 'formShortcuts'], (result) => {
     const presets = result.formPresets || {};
     const shortcuts = result.formShortcuts || {};
 
@@ -58,8 +62,9 @@ function loadPresets() {
     }
 
     // Sort presets by savedAt date (newest first)
-    const sortedPresets = Object.entries(presets)
-      .sort(([, a], [, b]) => new Date(b.savedAt) - new Date(a.savedAt));
+    const sortedPresets = Object.entries(presets).sort(
+      ([, a], [, b]) => new Date(b.savedAt) - new Date(a.savedAt)
+    );
 
     // Create list items for each preset
     sortedPresets.forEach(([presetName, preset]) => {
@@ -69,15 +74,18 @@ function loadPresets() {
 
       // Format date
       const date = new Date(preset.savedAt);
-      const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+      const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString(
+        [],
+        { hour: '2-digit', minute: '2-digit' }
+      )}`;
 
       // Get shortcut for this preset
       const shortcutKey = presetShortcuts[presetName] || '';
 
       // Determine if this preset has a shortcut
-      const shortcutHtml = shortcutKey ?
-        `<span class="shortcut-key" data-preset="${presetName}">${shortcutKey}</span>` :
-        `<span class="shortcut-key empty" data-preset="${presetName}">Set shortcut</span>`;
+      const shortcutHtml = shortcutKey
+        ? `<span class="shortcut-key" data-preset="${presetName}">${shortcutKey}</span>`
+        : `<span class="shortcut-key empty" data-preset="${presetName}">Set shortcut</span>`;
 
       // Create HTML for the preset item
       presetItem.innerHTML = `
@@ -105,17 +113,20 @@ function loadPresets() {
 // Add event listeners to fill, edit, and delete buttons
 function addButtonEventListeners() {
   // Fill button event listeners
-  document.querySelectorAll('button.fill').forEach(button => {
+  document.querySelectorAll('button.fill').forEach((button) => {
     button.addEventListener('click', async () => {
       const presetName = button.getAttribute('data-preset');
 
       // Get active tab
-      const tabs = await chrome.tabs.query({active: true, currentWindow: true});
+      const tabs = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
       if (tabs.length > 0) {
         // Send message to content script to fill the form
         chrome.tabs.sendMessage(tabs[0].id, {
-          action: "fillForm",
-          presetName: presetName
+          action: 'fillForm',
+          presetName: presetName,
         });
 
         // Close the popup
@@ -125,7 +136,7 @@ function addButtonEventListeners() {
   });
 
   // Edit button event listeners
-  document.querySelectorAll('button.edit').forEach(button => {
+  document.querySelectorAll('button.edit').forEach((button) => {
     button.addEventListener('click', () => {
       const presetName = button.getAttribute('data-preset');
       showEditView(presetName);
@@ -133,13 +144,15 @@ function addButtonEventListeners() {
   });
 
   // Delete button event listeners
-  document.querySelectorAll('button.delete').forEach(button => {
+  document.querySelectorAll('button.delete').forEach((button) => {
     button.addEventListener('click', () => {
       const presetName = button.getAttribute('data-preset');
 
-      if (confirm(`Are you sure you want to delete the preset "${presetName}"?`)) {
+      if (
+        confirm(`Are you sure you want to delete the preset "${presetName}"?`)
+      ) {
         // Get all presets, remove the selected one, and save back
-        chrome.storage.local.get(["formPresets", "formShortcuts"], (result) => {
+        chrome.storage.local.get(['formPresets', 'formShortcuts'], (result) => {
           const presets = result.formPresets || {};
           const shortcuts = result.formShortcuts || {};
 
@@ -148,23 +161,26 @@ function addButtonEventListeners() {
             delete presets[presetName];
 
             // Also delete any shortcut associated with this preset
-            Object.keys(shortcuts).forEach(key => {
+            Object.keys(shortcuts).forEach((key) => {
               if (shortcuts[key] === presetName) {
                 delete shortcuts[key];
               }
             });
 
             // Save back to storage
-            chrome.storage.local.set({
-              formPresets: presets,
-              formShortcuts: shortcuts
-            }, () => {
-              // Update context menus
-              chrome.runtime.sendMessage({ action: "presetSaved" });
+            chrome.storage.local.set(
+              {
+                formPresets: presets,
+                formShortcuts: shortcuts,
+              },
+              () => {
+                // Update context menus
+                chrome.runtime.sendMessage({ action: 'presetSaved' });
 
-              // Reload the list
-              loadPresets();
-            });
+                // Reload the list
+                loadPresets();
+              }
+            );
           }
         });
       }
@@ -180,7 +196,7 @@ function loadShortcuts() {
   shortcutsListElement.innerHTML = '';
 
   // Get saved shortcuts
-  chrome.storage.local.get("formShortcuts", (result) => {
+  chrome.storage.local.get('formShortcuts', (result) => {
     const shortcuts = result.formShortcuts || {};
 
     if (Object.keys(shortcuts).length === 0) {
@@ -210,28 +226,34 @@ function loadShortcuts() {
     });
 
     // Add event listeners for delete buttons
-    document.querySelectorAll('#shortcutsList button.delete').forEach(button => {
-      button.addEventListener('click', () => {
-        const shortcutKey = button.getAttribute('data-shortcut');
+    document
+      .querySelectorAll('#shortcutsList button.delete')
+      .forEach((button) => {
+        button.addEventListener('click', () => {
+          const shortcutKey = button.getAttribute('data-shortcut');
 
-        if (confirm(`Are you sure you want to remove the shortcut "${shortcutKey}"?`)) {
-          // Get all shortcuts, remove the selected one, and save back
-          chrome.storage.local.get("formShortcuts", (result) => {
-            const shortcuts = result.formShortcuts || {};
+          if (
+            confirm(
+              `Are you sure you want to remove the shortcut "${shortcutKey}"?`
+            )
+          ) {
+            // Get all shortcuts, remove the selected one, and save back
+            chrome.storage.local.get('formShortcuts', (result) => {
+              const shortcuts = result.formShortcuts || {};
 
-            if (shortcuts[shortcutKey]) {
-              delete shortcuts[shortcutKey];
+              if (shortcuts[shortcutKey]) {
+                delete shortcuts[shortcutKey];
 
-              // Save back to storage
-              chrome.storage.local.set({ formShortcuts: shortcuts }, () => {
-                // Reload the shortcuts list
-                loadShortcuts();
-              });
-            }
-          });
-        }
+                // Save back to storage
+                chrome.storage.local.set({ formShortcuts: shortcuts }, () => {
+                  // Reload the shortcuts list
+                  loadShortcuts();
+                });
+              }
+            });
+          }
+        });
       });
-    });
   });
 }
 
@@ -245,12 +267,13 @@ function updateShortcutPresetDropdown() {
   }
 
   // Get all presets
-  chrome.storage.local.get("formPresets", (result) => {
+  chrome.storage.local.get('formPresets', (result) => {
     const presets = result.formPresets || {};
 
     // Sort presets by savedAt date (newest first)
-    const sortedPresets = Object.entries(presets)
-      .sort(([, a], [, b]) => new Date(b.savedAt) - new Date(a.savedAt));
+    const sortedPresets = Object.entries(presets).sort(
+      ([, a], [, b]) => new Date(b.savedAt) - new Date(a.savedAt)
+    );
 
     // Add options for each preset
     sortedPresets.forEach(([presetName, preset]) => {
@@ -274,8 +297,12 @@ function setupShortcutListeners() {
     event.preventDefault();
 
     // Skip if it's just a modifier key by itself
-    if (event.key === 'Control' || event.key === 'Alt' ||
-        event.key === 'Shift' || event.key === 'Meta') {
+    if (
+      event.key === 'Control' ||
+      event.key === 'Alt' ||
+      event.key === 'Shift' ||
+      event.key === 'Meta'
+    ) {
       return;
     }
 
@@ -297,19 +324,19 @@ function setupShortcutListeners() {
     // Map special keys to their common names
     const keyMap = {
       ' ': 'Space',
-      'ArrowUp': 'ArrowUp',
-      'ArrowDown': 'ArrowDown',
-      'ArrowLeft': 'ArrowLeft',
-      'ArrowRight': 'ArrowRight',
-      'Enter': 'Enter',
-      'Tab': 'Tab',
-      'Escape': 'Esc',
-      'Delete': 'Delete',
-      'Backspace': 'Backspace',
-      'Home': 'Home',
-      'End': 'End',
-      'PageUp': 'PageUp',
-      'PageDown': 'PageDown'
+      ArrowUp: 'ArrowUp',
+      ArrowDown: 'ArrowDown',
+      ArrowLeft: 'ArrowLeft',
+      ArrowRight: 'ArrowRight',
+      Enter: 'Enter',
+      Tab: 'Tab',
+      Escape: 'Esc',
+      Delete: 'Delete',
+      Backspace: 'Backspace',
+      Home: 'Home',
+      End: 'End',
+      PageUp: 'PageUp',
+      PageDown: 'PageDown',
     };
 
     // For F1-F12 keys
@@ -370,11 +397,16 @@ function setupShortcutListeners() {
     // No need for manual format validation anymore
 
     // Get existing shortcuts
-    chrome.storage.local.get("formShortcuts", (result) => {
+    chrome.storage.local.get('formShortcuts', (result) => {
       const shortcuts = result.formShortcuts || {};
 
       // Check if shortcut already exists
-      if (shortcuts[shortcutKey] && !confirm(`Shortcut "${shortcutKey}" is already assigned to "${shortcuts[shortcutKey]}". Do you want to overwrite it?`)) {
+      if (
+        shortcuts[shortcutKey] &&
+        !confirm(
+          `Shortcut "${shortcutKey}" is already assigned to "${shortcuts[shortcutKey]}". Do you want to overwrite it?`
+        )
+      ) {
         return;
       }
 
@@ -396,7 +428,7 @@ function setupShortcutListeners() {
 // Add event listeners for shortcut elements
 function addShortcutEventListeners() {
   // Shortcut key click listeners
-  document.querySelectorAll('.shortcut-key').forEach(element => {
+  document.querySelectorAll('.shortcut-key').forEach((element) => {
     element.addEventListener('click', (event) => {
       const presetName = element.getAttribute('data-preset');
       const presetItem = element.closest('.preset-item');
@@ -410,7 +442,9 @@ function addShortcutEventListeners() {
       inputField.dataset.preset = presetName;
 
       // Remember the original shortcut in case we need to restore it
-      inputField.dataset.originalShortcut = element.classList.contains('empty') ? '' : element.textContent;
+      inputField.dataset.originalShortcut = element.classList.contains('empty')
+        ? ''
+        : element.textContent;
 
       // Replace the element
       element.parentNode.replaceChild(inputField, element);
@@ -421,7 +455,8 @@ function addShortcutEventListeners() {
       // Add a small hint below
       const hintElement = document.createElement('div');
       hintElement.className = 'shortcut-hint';
-      hintElement.textContent = 'Press modifier keys (Ctrl, Alt, Shift) + a key, or Esc to cancel';
+      hintElement.textContent =
+        'Press modifier keys (Ctrl, Alt, Shift) + a key, or Esc to cancel';
 
       // Insert the hint after the input
       inputField.insertAdjacentElement('afterend', hintElement);
@@ -459,8 +494,12 @@ function handleShortcutKeydown(event) {
   event.preventDefault();
 
   // Skip if it's just a modifier key by itself
-  if (event.key === 'Control' || event.key === 'Alt' ||
-      event.key === 'Shift' || event.key === 'Meta') {
+  if (
+    event.key === 'Control' ||
+    event.key === 'Alt' ||
+    event.key === 'Shift' ||
+    event.key === 'Meta'
+  ) {
     return;
   }
 
@@ -482,19 +521,19 @@ function handleShortcutKeydown(event) {
   // Map special keys to their common names
   const keyMap = {
     ' ': 'Space',
-    'ArrowUp': 'ArrowUp',
-    'ArrowDown': 'ArrowDown',
-    'ArrowLeft': 'ArrowLeft',
-    'ArrowRight': 'ArrowRight',
-    'Enter': 'Enter',
-    'Tab': 'Tab',
-    'Escape': 'Esc',
-    'Delete': 'Delete',
-    'Backspace': 'Backspace',
-    'Home': 'Home',
-    'End': 'End',
-    'PageUp': 'PageUp',
-    'PageDown': 'PageDown'
+    ArrowUp: 'ArrowUp',
+    ArrowDown: 'ArrowDown',
+    ArrowLeft: 'ArrowLeft',
+    ArrowRight: 'ArrowRight',
+    Enter: 'Enter',
+    Tab: 'Tab',
+    Escape: 'Esc',
+    Delete: 'Delete',
+    Backspace: 'Backspace',
+    Home: 'Home',
+    End: 'End',
+    PageUp: 'PageUp',
+    PageDown: 'PageDown',
   };
 
   // For F1-F12 keys
@@ -535,11 +574,18 @@ function handleShortcutKeydown(event) {
 }
 
 // Finish shortcut editing and save or cancel
-function finishShortcutEditing(presetItem, inputField, hintElement, cancel = false) {
+function finishShortcutEditing(
+  presetItem,
+  inputField,
+  hintElement,
+  cancel = false
+) {
   if (!presetItem || !inputField) return;
 
   const presetName = inputField.dataset.preset;
-  const shortcutKey = cancel ? inputField.dataset.originalShortcut : inputField.value;
+  const shortcutKey = cancel
+    ? inputField.dataset.originalShortcut
+    : inputField.value;
 
   // Remove hint element if it exists
   if (hintElement) {
@@ -585,11 +631,11 @@ function finishShortcutEditing(presetItem, inputField, hintElement, cancel = fal
 
 // Save a shortcut in storage
 function saveShortcut(shortcutKey, presetName) {
-  chrome.storage.local.get("formShortcuts", (result) => {
+  chrome.storage.local.get('formShortcuts', (result) => {
     const shortcuts = result.formShortcuts || {};
 
     // First, remove any existing shortcut for this preset
-    Object.keys(shortcuts).forEach(key => {
+    Object.keys(shortcuts).forEach((key) => {
       if (shortcuts[key] === presetName) {
         delete shortcuts[key];
       }
@@ -612,11 +658,11 @@ function saveShortcut(shortcutKey, presetName) {
 
 // Remove a shortcut for a preset
 function removeShortcut(presetName) {
-  chrome.storage.local.get("formShortcuts", (result) => {
+  chrome.storage.local.get('formShortcuts', (result) => {
     const shortcuts = result.formShortcuts || {};
 
     // Remove any shortcut assigned to this preset
-    Object.keys(shortcuts).forEach(key => {
+    Object.keys(shortcuts).forEach((key) => {
       if (shortcuts[key] === presetName) {
         delete shortcuts[key];
       }
@@ -631,12 +677,12 @@ function removeShortcut(presetName) {
 
 // Show edit view for a preset
 function showEditView(presetName) {
-  chrome.storage.local.get("formPresets", (result) => {
+  chrome.storage.local.get('formPresets', (result) => {
     const presets = result.formPresets || {};
     const preset = presets[presetName];
 
     if (!preset) {
-      alert("Preset not found");
+      alert('Preset not found');
       return;
     }
 
@@ -683,11 +729,20 @@ function showEditView(presetName) {
           </label>
         `;
       } else if (fieldData.type === 'textarea') {
-        inputHtml = `<textarea class="edit-field-input" data-field-id="${fieldId}" rows="3">${fieldData.value || ''}</textarea>`;
-      } else if (fieldData.type === 'select' || fieldData.type === 'select-multiple') {
-        inputHtml = `<input type="text" class="edit-field-input" data-field-id="${fieldId}" value="${fieldData.value || ''}">`;
+        inputHtml = `<textarea class="edit-field-input" data-field-id="${fieldId}" rows="3">${
+          fieldData.value || ''
+        }</textarea>`;
+      } else if (
+        fieldData.type === 'select' ||
+        fieldData.type === 'select-multiple'
+      ) {
+        inputHtml = `<input type="text" class="edit-field-input" data-field-id="${fieldId}" value="${
+          fieldData.value || ''
+        }">`;
       } else {
-        inputHtml = `<input type="text" class="edit-field-input" data-field-id="${fieldId}" value="${fieldData.value || ''}">`;
+        inputHtml = `<input type="text" class="edit-field-input" data-field-id="${fieldId}" value="${
+          fieldData.value || ''
+        }">`;
       }
 
       fieldItem.innerHTML = `
@@ -725,23 +780,27 @@ function savePresetEdits(originalPresetName) {
   const newPresetName = document.getElementById('editPresetName').value.trim();
 
   if (!newPresetName) {
-    alert("Preset name cannot be empty");
+    alert('Preset name cannot be empty');
     return;
   }
 
-  chrome.storage.local.get(["formPresets", "formShortcuts"], (result) => {
+  chrome.storage.local.get(['formPresets', 'formShortcuts'], (result) => {
     const presets = result.formPresets || {};
     const shortcuts = result.formShortcuts || {};
     const preset = presets[originalPresetName];
 
     if (!preset) {
-      alert("Preset not found");
+      alert('Preset not found');
       return;
     }
 
     // Check if renaming to a different name that already exists
     if (newPresetName !== originalPresetName && presets[newPresetName]) {
-      if (!confirm(`A preset named "${newPresetName}" already exists. Do you want to overwrite it?`)) {
+      if (
+        !confirm(
+          `A preset named "${newPresetName}" already exists. Do you want to overwrite it?`
+        )
+      ) {
         return;
       }
     }
@@ -750,7 +809,7 @@ function savePresetEdits(originalPresetName) {
     const editFieldsList = document.getElementById('editFieldsList');
     const fieldItems = editFieldsList.querySelectorAll('.edit-field-item');
 
-    fieldItems.forEach(fieldItem => {
+    fieldItems.forEach((fieldItem) => {
       const fieldId = fieldItem.dataset.fieldId;
       if (!fieldId) {
         return; // Skip the preset name field
@@ -777,7 +836,7 @@ function savePresetEdits(originalPresetName) {
       delete presets[originalPresetName];
 
       // Update any shortcuts that point to the old name
-      Object.keys(shortcuts).forEach(key => {
+      Object.keys(shortcuts).forEach((key) => {
         if (shortcuts[key] === originalPresetName) {
           shortcuts[key] = newPresetName;
         }
@@ -788,15 +847,18 @@ function savePresetEdits(originalPresetName) {
     presets[newPresetName] = preset;
 
     // Save back to storage
-    chrome.storage.local.set({ formPresets: presets, formShortcuts: shortcuts }, () => {
-      // Update context menus
-      chrome.runtime.sendMessage({ action: "presetSaved" });
+    chrome.storage.local.set(
+      { formPresets: presets, formShortcuts: shortcuts },
+      () => {
+        // Update context menus
+        chrome.runtime.sendMessage({ action: 'presetSaved' });
 
-      // Go back to list view
-      hideEditView();
+        // Go back to list view
+        hideEditView();
 
-      // Reload the list to show updated data
-      loadPresets();
-    });
+        // Reload the list to show updated data
+        loadPresets();
+      }
+    );
   });
 }

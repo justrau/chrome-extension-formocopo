@@ -134,14 +134,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Function to save form data
 function saveForm() {
-  if (!selectedForm) {
-    alert('No form selected. Right-click on a form element first.');
-    return;
+  if (selectedForm) {
+    doSaveForm(selectedForm);
+  } else {
+    // No form tag found, start element picker
+    startElementPicker((container) => {
+      doSaveForm(container);
+    });
   }
+}
 
+// Actual save form logic
+function doSaveForm(container) {
   // Collect all form fields
   const formData = {};
-  const inputs = selectedForm.querySelectorAll('input, select, textarea');
+  const inputs = container.querySelectorAll('input, select, textarea');
 
   inputs.forEach((input) => {
     // Skip buttons and submit inputs
@@ -199,7 +206,7 @@ function saveForm() {
   console.log('Raw form data being saved:', formData);
 
   // Generate a suggested preset name
-  const suggestedName = generatePresetName(selectedForm);
+  const suggestedName = generatePresetName(container);
 
   // Prompt user for preset name
   const presetName = prompt(
@@ -233,19 +240,22 @@ function saveForm() {
 }
 
 // Function to copy form data to clipboard
-async function copyForm() {
-  if (!selectedForm) {
-    showTemporaryMessage(
-      'No form selected. Right-click on a form element first.',
-      lastCursorPosition.x,
-      lastCursorPosition.y
-    );
-    return;
+function copyForm() {
+  if (selectedForm) {
+    doCopyForm(selectedForm);
+  } else {
+    // No form tag found, start element picker
+    startElementPicker((container) => {
+      doCopyForm(container);
+    });
   }
+}
 
+// Actual copy form logic
+async function doCopyForm(container) {
   // Collect all form fields (same logic as saveForm)
   const formData = {};
-  const inputs = selectedForm.querySelectorAll('input, select, textarea');
+  const inputs = container.querySelectorAll('input, select, textarea');
 
   inputs.forEach((input) => {
     // Skip buttons and submit inputs
@@ -624,57 +634,64 @@ function fillFormData(formData) {
 
 // Helper function to generate a unique ID for form fields
 function getUniqueFieldId(element) {
-  // Try to create a fairly unique ID based on attributes and position
-  let id = '';
-
-  // Use the name if available
-  if (element.name) {
-    id += `name="${element.name}"`;
-  }
-
-  // Use the id if available
-  if (element.id) {
-    id += `id="${element.id}"`;
-  }
-
-  // For radio buttons and checkboxes with the same name, include the value to differentiate them
-  if (
-    (element.type === 'radio' || element.type === 'checkbox') &&
-    element.value
-  ) {
-    id += `value="${element.value}"`;
-  }
-
-  // Use the label if available
-  const label = document.querySelector(`label[for="${element.id}"]`);
-  if (label && label.textContent) {
-    id += `label="${label.textContent.trim()}"`;
-  }
-
-  // Add type info - normalize select elements
-  let typeToUse = element.type;
+  // Get normalized type
+  let type = element.type;
   if (element.tagName.toLowerCase() === 'select') {
-    // For select elements, normalize the type since element.type can be undefined or inconsistent
-    typeToUse = element.multiple ? 'select-multiple' : 'select';
-  } else if (!typeToUse) {
-    // For other elements without a type, use tagName
-    typeToUse = element.tagName.toLowerCase();
-  }
-  id += `type="${typeToUse}"`;
-
-  // If still no unique identifiers, use position in form
-  if (!element.name && !element.id && !label) {
-    const form = element.closest('form');
-    if (form) {
-      const fields = Array.from(
-        form.querySelectorAll('input, select, textarea')
-      );
-      const index = fields.indexOf(element);
-      id += `index=${index}`;
-    }
+    type = element.multiple ? 'select-multiple' : 'select';
+  } else if (!type) {
+    type = element.tagName.toLowerCase();
   }
 
-  return id;
+  // Primary identifiers (stable, unique)
+  let primary = '';
+  if (element.name) {
+    primary += `name="${element.name}"`;
+  }
+  if (element.id) {
+    primary += `id="${element.id}"`;
+  }
+  // For radio/checkbox, value differentiates options with same name
+  if ((element.type === 'radio' || element.type === 'checkbox') && element.value) {
+    primary += `value="${element.value}"`;
+  }
+
+  // If we have primary identifiers, use them
+  if (primary) {
+    return primary + `type="${type}"`;
+  }
+
+  // Secondary identifiers (for elements without name/id)
+  let secondary = '';
+  if (element.placeholder) {
+    secondary += `placeholder="${element.placeholder}"`;
+  }
+  if (element.getAttribute('aria-label')) {
+    secondary += `aria="${element.getAttribute('aria-label')}"`;
+  }
+  // Check for label (either wrapping or via for attribute)
+  const label =
+    element.closest('label') ||
+    (element.id && document.querySelector(`label[for="${element.id}"]`));
+  if (label && label.textContent) {
+    secondary += `label="${label.textContent.trim()}"`;
+  }
+
+  // If we have secondary identifiers, use them
+  if (secondary) {
+    return secondary + `type="${type}"`;
+  }
+
+  // Fallback: position in container
+  const container = element.closest('form') || element.parentElement;
+  if (container) {
+    const fields = Array.from(
+      container.querySelectorAll('input, select, textarea')
+    );
+    const index = fields.indexOf(element);
+    return `index=${index}type="${type}"`;
+  }
+
+  return `type="${type}"`;
 }
 
 // Helper function to generate intelligent preset names
@@ -878,4 +895,170 @@ function showTemporaryMessage(message, x, y) {
   setTimeout(() => {
     messageElement.remove();
   }, 2000);
+}
+
+// Element picker state
+let pickerActive = false;
+let pickerCallback = null;
+let pickerHighlight = null;
+let pickerTooltip = null;
+let pickerCurrentElement = null;
+
+// Start element picker mode
+function startElementPicker(callback) {
+  if (pickerActive) return;
+
+  pickerActive = true;
+  pickerCallback = callback;
+
+  // Create highlight overlay
+  pickerHighlight = document.createElement('div');
+  pickerHighlight.id = 'formocopo-picker-highlight';
+  pickerHighlight.style.cssText = `
+    position: fixed;
+    pointer-events: none;
+    border: 2px dashed #4a90d9;
+    background: rgba(74, 144, 217, 0.1);
+    z-index: 999998;
+    transition: all 0.05s ease-out;
+  `;
+  document.body.appendChild(pickerHighlight);
+
+  // Create tooltip
+  pickerTooltip = document.createElement('div');
+  pickerTooltip.id = 'formocopo-picker-tooltip';
+  pickerTooltip.style.cssText = `
+    position: fixed;
+    pointer-events: none;
+    background: #333;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 12px;
+    z-index: 999999;
+    white-space: nowrap;
+  `;
+  document.body.appendChild(pickerTooltip);
+
+  // Add event listeners
+  document.addEventListener('mousemove', handlePickerMouseMove, true);
+  document.addEventListener('click', handlePickerClick, true);
+  document.addEventListener('keydown', handlePickerKeydown, true);
+}
+
+// Stop element picker mode
+function stopElementPicker() {
+  if (!pickerActive) return;
+
+  pickerActive = false;
+  pickerCallback = null;
+  pickerCurrentElement = null;
+
+  // Remove visual elements
+  if (pickerHighlight) {
+    pickerHighlight.remove();
+    pickerHighlight = null;
+  }
+  if (pickerTooltip) {
+    pickerTooltip.remove();
+    pickerTooltip = null;
+  }
+
+  // Remove event listeners
+  document.removeEventListener('mousemove', handlePickerMouseMove, true);
+  document.removeEventListener('click', handlePickerClick, true);
+  document.removeEventListener('keydown', handlePickerKeydown, true);
+}
+
+// Handle mouse movement in picker mode
+function handlePickerMouseMove(event) {
+  let element;
+
+  // Top-left corner selects entire body
+  if (event.clientX < 25 && event.clientY < 25) {
+    element = document.body;
+  } else {
+    element = document.elementFromPoint(event.clientX, event.clientY);
+
+    // Skip our own UI elements
+    if (
+      !element ||
+      element.id === 'formocopo-picker-highlight' ||
+      element.id === 'formocopo-picker-tooltip'
+    ) {
+      return;
+    }
+  }
+
+  pickerCurrentElement = element;
+
+  // Update highlight position
+  const rect = element.getBoundingClientRect();
+  pickerHighlight.style.left = rect.left + 'px';
+  pickerHighlight.style.top = rect.top + 'px';
+  pickerHighlight.style.width = rect.width + 'px';
+  pickerHighlight.style.height = rect.height + 'px';
+
+  // Update tooltip
+  let label = element.tagName.toLowerCase();
+  if (element.id) {
+    label += '#' + element.id;
+  } else if (element.className && typeof element.className === 'string') {
+    const classes = element.className
+      .split(' ')
+      .filter((c) => c)
+      .slice(0, 2);
+    if (classes.length) {
+      label += '.' + classes.join('.');
+    }
+  }
+
+  // Count inputs inside this element
+  const inputCount = element.querySelectorAll('input, select, textarea').length;
+  if (inputCount > 0) {
+    label += ` (${inputCount} input${inputCount > 1 ? 's' : ''})`;
+  }
+
+  pickerTooltip.textContent = label;
+
+  // Position tooltip near cursor
+  let tooltipX = event.clientX + 15;
+  let tooltipY = event.clientY + 15;
+
+  // Keep tooltip on screen
+  const tooltipRect = pickerTooltip.getBoundingClientRect();
+  if (tooltipX + tooltipRect.width > window.innerWidth) {
+    tooltipX = event.clientX - tooltipRect.width - 10;
+  }
+  if (tooltipY + tooltipRect.height > window.innerHeight) {
+    tooltipY = event.clientY - tooltipRect.height - 10;
+  }
+
+  pickerTooltip.style.left = tooltipX + 'px';
+  pickerTooltip.style.top = tooltipY + 'px';
+}
+
+// Handle click in picker mode
+function handlePickerClick(event) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  const element = pickerCurrentElement;
+  const callback = pickerCallback;
+
+  stopElementPicker();
+
+  if (element && callback) {
+    callback(element);
+  }
+}
+
+// Handle keydown in picker mode
+function handlePickerKeydown(event) {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    event.stopPropagation();
+    stopElementPicker();
+  }
 }

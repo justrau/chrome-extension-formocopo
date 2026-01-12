@@ -443,8 +443,8 @@ function getUniqueFieldId(element) {
     id += `id="${element.id}"`;
   }
 
-  // For radio buttons, include the value to differentiate them
-  if (element.type === 'radio' && element.value) {
+  // For radio buttons and checkboxes with the same name, include the value to differentiate them
+  if ((element.type === 'radio' || element.type === 'checkbox') && element.value) {
     id += `value="${element.value}"`;
   }
 
